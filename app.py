@@ -118,7 +118,7 @@ else:
             outcome = query_gemini(action)
             add_to_log(f"🤖 {outcome}")
 
-        st.experimental_rerun()
+        st.rerun()
 
     # Save / Load
     st.subheader("Save / Load Game")
@@ -132,4 +132,4 @@ else:
         import json
         save = json.load(uploaded_file)
         st.session_state.update(save)
-        st.experimental_rerun()
+        st.rerun()
