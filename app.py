@@ -5,7 +5,7 @@ import requests
 # Config
 # ----------------------
 GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generate"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent"
 
 # ----------------------
 # Session state
