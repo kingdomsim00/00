@@ -49,10 +49,18 @@ If the player dies, say so clearly.
 
     headers = {"Content-Type": "application/json"}
     body = {
-        "prompt": prompt_text,
-        "temperature": 0.7,
-        "candidate_count": 1,
-        "max_output_tokens": 300
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt_text}
+                ]
+            }
+        ],
+        "generationConfig": {
+            "temperature": 0.7,
+            "candidateCount": 1,
+            "maxOutputTokens": 300
+        }
     }
 
     try:
