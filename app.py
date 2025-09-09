@@ -8,7 +8,7 @@ GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
 GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generate"
 
 # ----------------------
-# Initialize session state
+# Session state
 # ----------------------
 if "story_log" not in st.session_state:
     st.session_state.story_log = []
@@ -27,7 +27,7 @@ intro_events = [
 ]
 
 # ----------------------
-# Helper functions
+# Helpers
 # ----------------------
 def add_to_log(text):
     st.session_state.story_log.append(text)
@@ -55,14 +55,19 @@ If the player dies, say so clearly.
         "max_output_tokens": 300
     }
 
-    response = requests.post(f"{GEMINI_URL}?key={GEMINI_API_KEY}", json=body)
-    if response.status_code != 200:
-        return f"⚠️ Gemini API error: {response.status_code}"
-    data = response.json()
     try:
-        return data["candidates"][0]["output"]
-    except:
-        return "⚠️ Unexpected response from Gemini API."
+        res = requests.post(
+            f"{GEMINI_URL}?key={GEMINI_API_KEY}",
+            json=body,
+            timeout=15
+        )
+        if res.status_code != 200:
+            return f"⚠️ Gemini API error: {res.status_code}"
+        data = res.json()
+        # Gemini Pro beta returns output like this:
+        return data.get("candidates", [{}])[0].get("output", "The fates are unclear...")
+    except Exception as e:
+        return f"⚠️ Error connecting to Gemini: {str(e)}"
 
 def next_intro_event():
     if st.session_state.intro_index < len(intro_events):
@@ -76,56 +81,53 @@ def next_intro_event():
 # Streamlit Layout
 # ----------------------
 st.set_page_config(page_title="KingdomSim", layout="wide")
-st.title("🛡️ KingdomSim")
+st.markdown("<h1 style='text-align:center'>🛡️ KingdomSim</h1>", unsafe_allow_html=True)
 
 # Character selection
 if st.session_state.player_character is None:
     st.subheader("Choose your character")
-    col1, col2, col3, col4, col5 = st.columns(5)
-    with col1:
-        if st.button("Man 1"):
-            st.session_state.player_character = "Man 1"
-    with col2:
-        if st.button("Man 2"):
-            st.session_state.player_character = "Man 2"
-    with col3:
-        if st.button("Man 3"):
-            st.session_state.player_character = "Man 3"
-    with col4:
-        if st.button("Woman 1"):
-            st.session_state.player_character = "Woman 1"
-    with col5:
-        if st.button("Woman 2"):
-            st.session_state.player_character = "Woman 2"
-
-    if st.session_state.player_character:
-        add_to_log(f"You have chosen to play as {st.session_state.player_character}. The story begins...")
-        next_intro_event()
+    cols = st.columns(5)
+    characters = ["Man 1", "Man 2", "Man 3", "Woman 1", "Woman 2"]
+    for i, char in enumerate(characters):
+        if cols[i].button(char):
+            st.session_state.player_character = char
+            add_to_log(f"You have chosen to play as {char}. The story begins...")
+            next_intro_event()
 else:
-    # Game log
+    # Story log container
     st.subheader("Story Log")
-    for entry in st.session_state.story_log:
-        st.write(entry)
+    log_container = st.container()
+    with log_container:
+        st.markdown(
+            "<div style='height:400px; overflow-y:auto; padding:10px; border:1px solid #444; background-color:#111; color:#eee;'>"
+            + "<br>".join(st.session_state.story_log)
+            + "</div>",
+            unsafe_allow_html=True
+        )
 
-    # Action input
-    action = st.text_input("Your action:", key="action_input")
+    # Player action
+    st.subheader("Your Action")
+    action = st.text_input("", key="action_input")
     if st.button("Submit Action"):
         if not st.session_state.intro_done:
+            add_to_log(f"➡️ You: {action}")
             add_to_log(f"Your decision influences the colony: {action}.")
             next_intro_event()
         else:
+            add_to_log(f"➡️ You: {action}")
             outcome = query_gemini(action)
             add_to_log(f"🤖 {outcome}")
 
-    # Export / Import
+        st.experimental_rerun()
+
+    # Save / Load
     st.subheader("Save / Load Game")
-    if st.button("Export Game"):
-        st.download_button(
-            "Download Save",
-            data=str(st.session_state),
-            file_name="kingdomsim_save.json"
-        )
-    uploaded_file = st.file_uploader("Import Save", type="json")
+    st.download_button(
+        "Export Game",
+        data=str(st.session_state),
+        file_name="kingdomsim_save.json"
+    )
+    uploaded_file = st.file_uploader("Import Game", type="json")
     if uploaded_file:
         import json
         save = json.load(uploaded_file)
